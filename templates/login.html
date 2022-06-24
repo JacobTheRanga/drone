@@ -1,0 +1,23 @@
+{% extends 'main.html' %}
+
+{% block main %}
+<div class="position-absolute translate-middle top-50 start-50 text-center container col-lg-3 col-sm px-5 py-5 shadow-lg border rounded bg-white">
+    
+    <form method="post">
+        <img src="{{url_for('static', filename='img/drone.png')}}" height="80" width="80">
+        <p class="display-1 fw-bold pb-3">Login</p>
+
+        <hr class="my-3">
+        <div class="form-floating mb-3">
+            <input type="password" name="pass" class="form-control" id="floatingPassword" placeholder="Password">
+            <label for="floatingPassword">Password</label>
+        </div>
+
+        <hr class="my-3">
+        <button class="w-100 btn btn-lg bg-primary text-white" type="submit">Sign in</button>
+        
+        <p class="text-danger">{{output}}</p>
+    
+    </form>
+</div>
+{% endblock %}
