@@ -5,7 +5,7 @@ const int MPU_addr=0x68;
 int minVal=265;
 int maxVal=402;
 
-int16_t accel[3];
+short accel[3];
 
 int gyro[3];
  
@@ -48,14 +48,10 @@ void loop(){
     y = mappedGyro[1];
     z = mappedGyro[2];
 
-    Serial.print("AngleX= ");
-    Serial.println(x);
-    
-    Serial.print("AngleY= ");
-    Serial.println(y);
-    
-    Serial.print("AngleZ= ");
+    Serial.print(x);
+    Serial.print(' ');
+    Serial.print(y);
+    Serial.print(' ');
     Serial.println(z);
-    Serial.println("-----------------------------------------");
-    delay(200);
+    delay(10);
 }
