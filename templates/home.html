@@ -1,7 +1,22 @@
 {% extends 'main.html' %}
 
 {% block main %}
-<form method="post">
-    <button type="submit">click me</button>
-</form>
+<div class="container py-5 px-5 my-5 bg-white rounded shadow-lg border">
+    <div class="row">
+        <div class="col">
+            <h1>Angle</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-4">
+            <p>x = {{angle['x']}}</p>
+        </div>
+        <div class="col-4">
+            <p>y = {{angle['y']}}</p>
+        </div>
+        <div class="col-4">
+            <p>z = {{angle['z']}}</p>
+        </div>
+    </div>
+</div>
 {% endblock %}
