@@ -12,7 +12,7 @@ int maxVal=402;
 int maxpwm = 30;
 int maxangle = 10;
 int change = 1;
-int rate = 20;
+int rate = 10;
 
 int motor1pwm = 0;
 int motor2pwm = 0;
