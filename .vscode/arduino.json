@@ -1,6 +1,6 @@
 {
-    "port": "COM5",
     "board": "arduino:avr:uno",
-    "sketch": "mpu6050.ino",
-    "programmer": "arduino:arduinoisp"
+    "port": "COM5",
+    "programmer": "arduino:arduinoisp",
+    "sketch": "mpu6050.ino"
 }
