@@ -12,9 +12,9 @@ int minVal=265;
 int maxVal=402;
 
 int maxpwm = 30;
-int maxAngle = 10;
+int maxAngle = 5;
 
-int maxSpeed = 5;
+int maxSpeed = 2;
 
 int change = 1;
 int rate = 10;
@@ -28,7 +28,7 @@ int gyro[3];
  
 double mappedGyro[3];
 
-double x, xprev, xvel, y, yprev, yvel, z, zprev, zvel;
+double x, xprev, xchange, xvel, y, yprev, ychange, yvel, z, zprev, zchange, zvel;
  
 void setup(){
     Wire.begin();
@@ -79,7 +79,7 @@ void loop(){
     yvel = ychange / elapsedTime;
     zvel = zchange / elapsedTime;
 
-    if (x > maxAngle || xvel > maxspeed){
+    if (x > maxAngle || xvel > maxSpeed){
         if (motor1pwm < maxpwm){
         motor1pwm = motor1pwm +change;
         }
