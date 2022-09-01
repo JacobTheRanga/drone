@@ -4,32 +4,35 @@
 Servo motor1;
 Servo motor2;
  
-const int MPU_addr=0x68;
- 
+const int mpu=0x68;
+
+float previousTime, currentTime, elapsedTime;
+
 int minVal=265;
 int maxVal=402;
 
 int maxpwm = 30;
-int maxangle = 10;
+int maxAngle = 10;
+
+int maxSpeed = 5;
+
 int change = 1;
 int rate = 10;
 
 int motor1pwm = 0;
 int motor2pwm = 0;
 
-short accel[3];
+short raw[3];
 
 int gyro[3];
  
 double mappedGyro[3];
 
-double x;
-double y;
-double z;
+double x, xprev, xvel, y, yprev, yvel, z, zprev, zvel;
  
 void setup(){
     Wire.begin();
-    Wire.beginTransmission(MPU_addr);
+    Wire.beginTransmission(mpu);
     Wire.write(0x6B);
     Wire.write(0);
     Wire.endTransmission(true);
@@ -38,15 +41,13 @@ void setup(){
     motor2.attach(10, 1000, 2000);
 }
 void loop(){
-    Wire.beginTransmission(MPU_addr);
+    Wire.beginTransmission(mpu);
     Wire.write(0x3B);
     Wire.endTransmission(false);
-    Wire.requestFrom(MPU_addr,14,true);
+    Wire.requestFrom(mpu,14,true);
     for (int i = 0; i < 3; i++){
-        accel[i] = Wire.read()<<8|Wire.read();
-    }
-    for (int i = 0; i < 3; i++){
-        gyro[i] = map(accel[i],minVal,maxVal,-90,90);
+        raw[i] = Wire.read()<<8|Wire.read();
+        gyro[i] = map(raw[i],minVal,maxVal,-90,90);
     }
     mappedGyro[0] = RAD_TO_DEG * (atan2(-gyro[1], -gyro[2])+PI);
     mappedGyro[1] = RAD_TO_DEG * (atan2(-gyro[0], -gyro[2])+PI);
@@ -58,11 +59,27 @@ void loop(){
         }
     }
 
+    xprev = x;
+    yprev = y;
+    zprev = z;
+
     x = mappedGyro[0];
     y = mappedGyro[1];
     z = mappedGyro[2];
 
-    if (x > maxangle){
+    xchange = x - xprev;
+    ychange = y - yprev;
+    zchange = z - zprev;
+
+    previousTime = currentTime;
+    currentTime = millis();
+    elapsedTime = (currentTime - previousTime)/1000;
+
+    xvel = xchange / elapsedTime;
+    yvel = ychange / elapsedTime;
+    zvel = zchange / elapsedTime;
+
+    if (x > maxAngle || xvel > maxspeed){
         if (motor1pwm < maxpwm){
         motor1pwm = motor1pwm +change;
         }
@@ -70,7 +87,7 @@ void loop(){
         motor2pwm = motor2pwm -change;
         }
     }
-    if (x < -maxangle){
+    if (x < -maxAngle || xvel < -maxSpeed){
         if (motor2pwm < maxpwm){
         motor2pwm = motor2pwm +change;
         }
