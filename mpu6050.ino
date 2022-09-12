@@ -16,7 +16,7 @@ int maxAngle = 5;
 
 int maxSpeed = 2;
 
-int change = 1;
+int changeRate = 1;
 int rate = 10;
 
 int motor1pwm = 0;
@@ -26,9 +26,9 @@ short raw[3];
 
 int gyro[3];
  
-double mappedGyro[3];
+double mappedGyro[3], processedGyro[3], prev[3], change[3], vel[3];
 
-double x, xprev, xchange, xvel, y, yprev, ychange, yvel, z, zprev, zchange, zvel;
+double x, y, z, xvel, yvel, zvel;
  
 void setup(){
     Wire.begin();
@@ -52,39 +52,35 @@ void loop(){
     mappedGyro[0] = RAD_TO_DEG * (atan2(-gyro[1], -gyro[2])+PI);
     mappedGyro[1] = RAD_TO_DEG * (atan2(-gyro[0], -gyro[2])+PI);
     mappedGyro[2] = RAD_TO_DEG * (atan2(-gyro[0], -gyro[1])+PI);
-    
-    for (int i = 0; i < 3; i++){
-        if (mappedGyro[i] > 180){
-            mappedGyro[i] = mappedGyro[i] - 360;
-        }
-    }
-
-    xprev = x;
-    yprev = y;
-    zprev = z;
-
-    x = mappedGyro[0];
-    y = mappedGyro[1];
-    z = mappedGyro[2];
-
-    xchange = x - xprev;
-    ychange = y - yprev;
-    zchange = z - zprev;
 
     previousTime = currentTime;
     currentTime = millis();
     elapsedTime = (currentTime - previousTime)/1000;
 
-    xvel = xchange / elapsedTime;
-    yvel = ychange / elapsedTime;
-    zvel = zchange / elapsedTime;
+    for (int i = 0; i < 3; i++){
+        if (mappedGyro[i] > 180){
+            mappedGyro[i] = mappedGyro[i] - 360;
+        }
+        prev[i] = processedGyro[i];
+        processedGyro[i] = mappedGyro[i];
+        change[i] = processedGyro[i] - prev[i];
+        vel[i] = change[i] / elapsedTime;
+    }
+
+    xvel = vel[0];
+    yvel = vel[1];
+    zvel = vel[2];
+
+    x = processedGyro[0];
+    y = processedGyro[1];
+    z = processedGyro[2];
 
     if (x > maxAngle || xvel > maxSpeed){
         if (motor1pwm < maxpwm){
-        motor1pwm = motor1pwm +change;
+        motor1pwm = motor1pwm +changeRate;
         }
         if (motor2pwm > 0){
-        motor2pwm = motor2pwm -change;
+        motor2pwm = motor2pwm -changeRate;
         }
     }
     if (x < -maxAngle || xvel < -maxSpeed){
@@ -92,7 +88,7 @@ void loop(){
         motor2pwm = motor2pwm +change;
         }
         if (motor1pwm > 0){
-        motor1pwm = motor1pwm -change;
+        motor1pwm = motor1pwm -changeRate;
         }
     }
     motor1.write(motor1pwm);
