@@ -85,7 +85,7 @@ void loop(){
     }
     if (x < -maxAngle || xvel < -maxSpeed){
         if (motor2pwm < maxpwm){
-        motor2pwm = motor2pwm +change;
+        motor2pwm = motor2pwm +changeRate;
         }
         if (motor1pwm > 0){
         motor1pwm = motor1pwm -changeRate;
