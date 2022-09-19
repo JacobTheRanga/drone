@@ -15,6 +15,8 @@ int freq = 9600; // Serial Frequency
 
 Servo esc[4]; // ESCs
 
+bool startup = false; // Drone startup
+
 float minspeed = 0.1; // Minimum Speed Percentage sent to the motors - enough to spin consistantly
 
 int pwmrange[2] = {1000, 2000}; //Range of PWM where the motors operate
@@ -72,20 +74,41 @@ void mpudataprocessing(){
     et = (ct - pt)/1000;
 
     for (int i = 0; i < 3; i++){
-        // Keep 
+        // Keep angles between -180 and 180 for ease of use
         if (angle[i] > 180){
             angle[i] = angle[i] - 360;
         }
+        // Calculate the change in angle (velocity)
         prevangle[i] = curangle[i];
         curangle[i] = angle[i];
         vel[i] = (curangle[i] - prevangle[i])/et;
     }
 }
 
-// Calculate pwm signal that needs to be sent to each motor based off the processed MPU6050 data (PID calculation)
-void pwmcalculation(){
+// Start up motors
+void motorstartup(){
+    for (int i = 0; i < (minspeed*180); i++){
+        for (int a = 0; a < 4; a++){
+            esc[a].write(i);
+        }
+        delay(100);
+    }
+}
+
+// Main control system
+void pidcontrol(){
     for (int i = 0; i < 4; i++){
         esc[i].write(escsignal[i]*180);
+    }
+}
+
+// Main drone control code
+void drone(){
+    if (startup == false){
+        motorstartup();
+    }
+    else{
+        pidcontrol();
     }
 }
 
