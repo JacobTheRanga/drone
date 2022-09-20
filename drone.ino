@@ -45,7 +45,7 @@ double preverr[3]; // Previous processed angle data from MPU6050
 double currerr[3] = {0, 0, 0}; // Current processed angle data from MPU6050
 
 double err[3]; // Difference between setpoint and actual point (Proportion)
-double errint[3]; // Amount of error over-correction (Integral)
+double errint[3] = {0, 0, 0}; // Amount of error over-correction (Integral)
 double errderiv[3]; // Change in error (Derivitive)
 
 double correction[3]; // How much to correct by (PID final calculation)
@@ -92,7 +92,7 @@ void mpudataprocessing(){
 // Start up motors
 void motorstartup(){
     // Increases PWM signal 10 times a second by 1 for all 4 motors until the minimum power is hit
-    for (int i = 0; i < minpower*pwmconst + pwmrange[0]; i+=10){
+    for (int i = pwmrange[0]; i < minpower*pwmconst + pwmrange[0]; i+=10){
         for (int a = 0; a < 4; a++){
             analogWrite(escpin[a], i);
         }
@@ -146,12 +146,12 @@ void pidcontrol(){
 
     for (int i = 0; i < 4; i++){
         // Ensure motors don't fall below the minimum power
-        if (motorpower[i] < minpower*pwmconst){
-            motorpower[i] = minpower*pwmconst;
+        if (motorpower[i] < minpower){
+            motorpower[i] = minpower;
         }`
         // Ensure motor don't exceed the maximum power
-        if (motorpower[i] > maxpower*pwmconst){
-            motorpower[i] =  maxpower*pwmconst;
+        if (motorpower[i] > maxpower){
+            motorpower[i] =  maxpower;
         }
         // Write the signals to the motors
         analogWrite(escpin[i], motorpower[i]*pwmconst + pwmrange[0]);
