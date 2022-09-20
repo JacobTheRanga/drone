@@ -33,7 +33,7 @@ int maxmpu = 402; // Maximum MPU6050 output value - used for MPU6050 mapping
 int escsignal[4]; // Signal sent to ESCs in terms of percentage of power
 
 short raw[3]; // Raw output of MPU6050
-short angle[3]; // Processed angle data from MPU6050
+double angle[3]; // Processed angle data from MPU6050
 
 double prevangle[3]; // Previous processed angle data from MPU6050
 double curangle[3]; // Current processed angle data from MPU6050
@@ -60,15 +60,18 @@ void mpudataprocessing(){
     Wire.endTransmission(false);
     Wire.requestFrom(mpu, 14, true);
 
+    // Read and map raw MPU6050 values
     for (int i = 0; i < 3; i++){
         raw[i] = Wire.read() << 8 | Wire.read();
         raw[i] = map(raw[i], minmpu, maxmpu, -90, 90);
     }
 
+    // Turn raw values into angles
     angle[0] = RAD_TO_DEG * (atan2(-raw[1], -raw[2])+PI);
     angle[1] = RAD_TO_DEG * (atan2(-raw[0], -raw[2])+PI);
     angle[2] = RAD_TO_DEG * (atan2(-raw[0], -raw[1])+PI);
 
+    // Calculate change in time
     pt = ct;
     ct = millis();
     et = (ct - pt)/1000;
@@ -95,8 +98,24 @@ void motorstartup(){
     }
 }
 
+// Proportional calculation
+void proportioncalc(){
+
+}
+
+// Integral calculation
+void intcalc(){
+
+}
+
+// Derivitive calculation
+void derivcalc(){
+
+}
+
 // Main control system
 void pidcontrol(){
+    proportioncalc();
     for (int i = 0; i < 4; i++){
         esc[i].write(escsignal[i]*180);
     }
