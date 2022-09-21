@@ -1,13 +1,13 @@
 // Adjustable variables
 
-double maxpower = 0.3; // Maximum power Percentage - allows user to cap the power for safety
-double target = 0.2 // power you wish to achieve
+double maxpower = 0.1; // Maximum power Percentage - allows user to cap the power for safety
+double target = 0.2; // power you wish to achieve
 
 double setpoint[3] = {0, 0, 0}; // Destination in degrees
 
-double gain[3] = {0.1, 0.1, 0.1}; // Motor power multiplier || Proportional / Integral / Derivitive
+double gain[3] = {0.01, 0.01, 0.01}; // Motor power multiplier || Proportional / Integral / Derivitive
 
-int rate = 10; // How many times a second the drone updates
+int rate = 1000; // How many times a second the drone updates
 
 int escpin[4] = {9, 10, 11, 12}; // ESC Pins
 
@@ -15,7 +15,7 @@ int freq = 9600; // Serial Frequency
 
 // Hardware specific variables
 
-double minpower = 0.15; // Minimum power Percentage sent to the motors - enough to spin consistantly
+double minpower = 0.2; // Minimum power Percentage sent to the motors - enough to spin consistantly
 
 int pwmrange[2] = {1000, 2000}; //Range of PWM where the motors operate
 
@@ -27,6 +27,8 @@ int maxmpu = 402; // Maximum MPU6050 output value - used for MPU6050 mapping
 #include <Wire.h>
 
 bool startup = false; // Drone startup
+
+int pwm[4]; // PWM signal getting sent out to escs
 
 int mpu = 0x68; // MPU6050 address
 
@@ -89,18 +91,6 @@ void mpudataprocessing(){
     }
 }
 
-// Start up motors
-void motorstartup(){
-    // Increases PWM signal 10 times a second by 1 for all 4 motors until the minimum power is hit
-    for (int i = pwmrange[0]; i < minpower*pwmconst + pwmrange[0]; i+=10){
-        for (int a = 0; a < 4; a++){
-            analogWrite(escpin[a], i);
-        }
-        delay(100);
-    }
-    startup = true;
-}
-
 // Ballancing just off the x-axis on a seesaw
 void seesaw(){
     //  Map correction to power of the motors
@@ -114,11 +104,41 @@ void seesaw(){
     }
 }
 
+// Convert power values to PWM values and send them to the escs
+void powertopwm(){
+    for (int i = 0; i < 4; i++){
+        // Ensure motors don"t fall below the minimum power
+        if (motorpower[i] < minpower){
+            motorpower[i] = minpower;
+        }
+        // Ensure motor don"t exceed the maximum power
+        if (motorpower[i] > maxpower){
+            motorpower[i] =  maxpower;
+        }
+        // Write the signals to the motors
+        analogWrite(escpin[i], motorpower[i]*pwmconst + pwmrange[0]);
+    }
+}
+
+// Start up motors
+void motorstartup(){
+    // Increases PWM signal 10 times a second by 1 for all 4 motors until the minimum power is hit
+    Serial.println("Starting motors...");
+    for (float i = 0; i < minpower; i+=0.01){
+        for (int a = 0; a < 4; a++){
+            motorpower[a] = i;
+        }
+        Serial.print(i*100);
+        Serial.println("%");
+        powertopwm();
+        delay(100);
+    }
+    Serial.println("MOTORS START UP SEQUENCE COMPLETE!!!");
+    startup = true;
+}
+
 // Main control system
 void pidcontrol(){
-
-    mpudataprocessing();
-    
     // Calculate error value = e
     for (int i = 0; i < 3; i++){
         err[i] = angle[i] - setpoint[i];
@@ -141,21 +161,6 @@ void pidcontrol(){
     for (int i = 0; i < 3; i++){
         correction[i] = (err[i] * gain[0]) + (errint[i] * gain[1]) + (errderiv[i] * gain[2]);
     }
-
-    seesaw();
-
-    for (int i = 0; i < 4; i++){
-        // Ensure motors don't fall below the minimum power
-        if (motorpower[i] < minpower){
-            motorpower[i] = minpower;
-        }`
-        // Ensure motor don't exceed the maximum power
-        if (motorpower[i] > maxpower){
-            motorpower[i] =  maxpower;
-        }
-        // Write the signals to the motors
-        analogWrite(escpin[i], motorpower[i]*pwmconst + pwmrange[0]);
-    }
 }
 
 // Main drone control code
@@ -164,22 +169,45 @@ void drone(){
         motorstartup();
     }
     else{
+        mpudataprocessing();
         pidcontrol();
+        seesaw();
+        powertopwm();
     }
 }
 
 // Print function specifically designed for printing arrays - used for testing/debugging/tuning
-void print(double var){
-    for (int i = 0; i < var.length-1; i++){
+void print(double var[], int len){
+    for (int i = 0; i < len-1; i++){
         Serial.print(var[i]);
-        Serial.print(' / ');
+        Serial.print(" / ");
     }
-    Serial.println(var[var.length-1]);
+    Serial.println(var[len-1]);
 }
 
-// Main code
+// Able to change setpoint through serial monitor
+void changesetpoint(int axis){
+    if (Serial.available()){
+        setpoint[axis] = Serial.parseInt();
+    }
+}
+
+// Able to change motor power through serial monitor
+void changepower(int motor){
+    if (Serial.available()){
+        motorpower[motor] = Serial.parseInt();
+    }
+}
+
+// Writes numbers sent through serial directly to esc pin defined
+void inputpwm(int pin){
+    if (Serial.available()){
+        analogWrite(pin, Serial.parseInt());
+    }
+}
+
+// Main code loop
 void loop(){
-    mpudataprocessing();
-    print(angle);
+    inputpwm(10);
     delay(1000/rate);
 }
