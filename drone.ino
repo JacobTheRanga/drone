@@ -116,8 +116,7 @@ void powertopwm(){
             motorpower[i] =  maxpower;
         }
         // Write the signals to the motors
-        pwm[i] = motorpower[i]*pwmconst + pwmrange[0];
-        analogWrite(escpin[i], pwm[i]);
+        analogWrite(escpin[i], motorpower[i]*pwmconst + pwmrange[0]);
     }
 }
 
@@ -125,12 +124,13 @@ void powertopwm(){
 void motorstartup(){
     // Increases PWM signal 10 times a second by 1 for all 4 motors until the minimum power is hit
     Serial.println("Starting motors...");
-    for (int i = pwmrange[0]; i < minpower*pwmconst + pwmrange[0]; i+=5){
+    for (float i = 0; i < minpower; i+=0.01){
         for (int a = 0; a < 4; a++){
-            analogWrite(escpin[a], i);
+            motorpower[a] = i;
         }
-        Serial.print((i - pwmrange[0])/(minpower*pwmconst)*100);
+        Serial.print(i*100);
         Serial.println("%");
+        powertopwm();
         delay(100);
     }
     Serial.println("MOTORS START UP SEQUENCE COMPLETE!!!");
@@ -199,16 +199,15 @@ void changepower(int motor){
     }
 }
 
-void inputpwm(int motor){
+// Writes numbers sent through serial directly to esc pin defined
+void inputpwm(int pin){
     if (Serial.available()){
-        pwm[motor] = Serial.parseInt();
-        analogWrite(motor, pwm[motor]);
+        analogWrite(pin, Serial.parseInt());
     }
 }
 
-// Main code
+// Main code loop
 void loop(){
-    inputpwm(1);
-    print(motorpower, 4);
+    inputpwm(10);
     delay(1000/rate);
 }
