@@ -1,13 +1,13 @@
 // Adjustable variables
 
-double maxpower = 0.1; // Maximum power Percentage - allows user to cap the power for safety
-double target = 0.2; // power you wish to achieve
+double maxpower = 0.4; // Maximum power Percentage - allows user to cap the power for safety
+double target = 0.3; // power you wish to achieve
 
 double setpoint[3] = {0, 0, 0}; // Destination in degrees
 
 double gain[3] = {0.01, 0.01, 0.01}; // Motor power multiplier || Proportional / Integral / Derivitive
 
-int rate = 1000; // How many times a second the drone updates
+int rate = 10; // How many times a second the drone updates
 
 int escpin[4] = {9, 10, 11, 12}; // ESC Pins
 
@@ -25,6 +25,12 @@ int maxmpu = 402; // Maximum MPU6050 output value - used for MPU6050 mapping
 //---------------------------------------------------------------------------------------------------------------
 
 #include <Wire.h>
+#include <Servo.h>
+
+Servo motor1;
+Servo motor2;
+Servo motor3;
+Servo motor4;
 
 bool startup = false; // Drone startup
 
@@ -32,7 +38,7 @@ int pwm[4]; // PWM signal getting sent out to escs
 
 int mpu = 0x68; // MPU6050 address
 
-int pwmconst = pwmrange[1] - pwmrange[0]; // Constant at which the motorpower is multiplied by
+int pwmconst = 180; // Constant at which the motorpower is multiplied by
 
 double pt; // Previous Time - Time at which elapsed time was last calculated
 double ct = 0; // Current Time
@@ -52,6 +58,8 @@ double errderiv[3]; // Change in error (Derivitive)
 
 double correction[3]; // How much to correct by (PID final calculation)
 
+int timer = 0; // Timer
+
 //Initalise Arduino
 void setup(){
     Wire.begin();
@@ -60,9 +68,15 @@ void setup(){
     Wire.write(0);
     Wire.endTransmission(true);
     Serial.begin(freq);
-    for (int i = 0; i < 4; i++){
-        pinMode(escpin[i], OUTPUT);
-    }
+    motor1.attach(escpin[0],pwmrange[0],pwmrange[1]);
+    motor2.attach(escpin[1],pwmrange[0],pwmrange[1]);
+    motor3.attach(escpin[2],pwmrange[0],pwmrange[1]);
+    motor4.attach(escpin[3],pwmrange[0],pwmrange[1]);
+    motor1.write(0);
+    motor2.write(0);
+    motor3.write(0);
+    motor4.write(0);
+    delay(5000);
 }
 
 // Collecting and processing MPU6050 data
@@ -115,26 +129,12 @@ void powertopwm(){
         if (motorpower[i] > maxpower){
             motorpower[i] =  maxpower;
         }
-        // Write the signals to the motors
-        analogWrite(escpin[i], motorpower[i]*pwmconst + pwmrange[0]);
     }
-}
-
-// Start up motors
-void motorstartup(){
-    // Increases PWM signal 10 times a second by 1 for all 4 motors until the minimum power is hit
-    Serial.println("Starting motors...");
-    for (float i = 0; i < minpower; i+=0.01){
-        for (int a = 0; a < 4; a++){
-            motorpower[a] = i;
-        }
-        Serial.print(i*100);
-        Serial.println("%");
-        powertopwm();
-        delay(100);
-    }
-    Serial.println("MOTORS START UP SEQUENCE COMPLETE!!!");
-    startup = true;
+    // Write the signals to the motors
+    motor1.write(motorpower[0]*pwmconst);
+    motor2.write(motorpower[1]*pwmconst);
+    motor3.write(motorpower[2]*pwmconst);
+    motor4.write(motorpower[3]*pwmconst);
 }
 
 // Main control system
@@ -145,9 +145,10 @@ void pidcontrol(){
     }
 
     // Calculate change in time = dt
+    timer++;
     pt = ct;
-    ct = millis();
-    et = (ct - pt)/1000;
+    ct = timer;
+    et = (ct - pt)/rate;
 
     // Calculate change in error value in terms of change in time = de/dt
     for (int i = 0; i < 3; i++){
@@ -165,15 +166,10 @@ void pidcontrol(){
 
 // Main drone control code
 void drone(){
-    if (startup == false){
-        motorstartup();
-    }
-    else{
-        mpudataprocessing();
-        pidcontrol();
-        seesaw();
-        powertopwm();
-    }
+    mpudataprocessing();
+    pidcontrol();
+    seesaw();
+    powertopwm();
 }
 
 // Print function specifically designed for printing arrays - used for testing/debugging/tuning
@@ -199,15 +195,10 @@ void changepower(int motor){
     }
 }
 
-// Writes numbers sent through serial directly to esc pin defined
-void inputpwm(int pin){
-    if (Serial.available()){
-        analogWrite(pin, Serial.parseInt());
-    }
-}
-
 // Main code loop
 void loop(){
-    inputpwm(10);
+    mpudataprocessing();
+    pidcontrol();
+    print(errderiv, 3);
     delay(1000/rate);
 }
