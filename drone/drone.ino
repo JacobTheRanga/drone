@@ -1,7 +1,7 @@
 // Adjustable variables
 
-double maxpower = 0.4; // Maximum power Percentage - allows user to cap the power for safety
-double target = 0.3; // power you wish to achieve
+double maxpower[4] = {0.2, 0.2, 0.2, 0.2}; // Maximum power Percentage - allows user to cap the power for safety
+double target = 0.2; // power you wish to achieve
 
 double setpoint[3] = {0, 0, 0}; // Destination in degrees
 
@@ -9,13 +9,13 @@ double gain[3] = {0.01, 0.01, 0.01}; // Motor power multiplier || Proportional /
 
 int rate = 10; // How many times a second the drone updates
 
-int escpin[4] = {9, 10, 11, 12}; // ESC Pins
+int escpin[4] = {9, 10, 5, 6}; // ESC Pins
 
 int freq = 9600; // Serial Frequency
 
 // Hardware specific variables
 
-double minpower = 0.2; // Minimum power Percentage sent to the motors - enough to spin consistantly
+double minpower[4] = {0.15, 0.15, 0.15, 0.15}; // Minimum power Percentage sent to the motors - enough to spin consistantly
 
 int pwmrange[2] = {1000, 2000}; //Range of PWM where the motors operate
 
@@ -44,7 +44,7 @@ double pt; // Previous Time - Time at which elapsed time was last calculated
 double ct = 0; // Current Time
 double et; // Elapsed Time - Time that has past since last defined
 
-double motorpower[4] = {minpower, minpower, minpower, minpower}; // Motor power in percentage
+double motorpower[4] = {minpower[0], minpower[1], minpower[2], minpower[3]}; // Motor power in percentage
 
 short raw[3]; // Raw output of MPU6050
 double angle[3]; // Processed angle data from MPU6050
@@ -57,8 +57,6 @@ double errint[3] = {0, 0, 0}; // Amount of error over-correction (Integral)
 double errderiv[3]; // Change in error (Derivitive)
 
 double correction[3]; // How much to correct by (PID final calculation)
-
-int timer = 0; // Timer
 
 //Initalise Arduino
 void setup(){
@@ -76,7 +74,10 @@ void setup(){
     motor2.write(0);
     motor3.write(0);
     motor4.write(0);
-    delay(5000);
+    for (int i; i < 4; i++){
+        motorpower[i] = 0;
+    }
+    delay(2500);
 }
 
 // Collecting and processing MPU6050 data
@@ -92,16 +93,21 @@ void mpudataprocessing(){
         raw[i] = map(raw[i], minmpu, maxmpu, -90, 90);
     }
 
-    // Turn raw values into angles
-    angle[0] = RAD_TO_DEG * (atan2(-raw[1], -raw[2])+PI);
-    angle[1] = RAD_TO_DEG * (atan2(-raw[0], -raw[2])+PI);
-    angle[2] = RAD_TO_DEG * (atan2(-raw[0], -raw[1])+PI);
+    // Turn raw values into radians
+    angle[0] = atan2(raw[1], raw[2]);
+    angle[1] = atan2(raw[0], raw[2]);
+    angle[2] = atan2(raw[0], raw[1]);
 
     for (int i = 0; i < 3; i++){
-        // Keep angles between -180 and 180 for ease of use
-        if (angle[i] > 180){
-            angle[i] = angle[i] - 360;
+        // Keep values between -PI and PI for ease of use
+        if (angle[i] > PI){
+            angle[i] = angle[i] - (2 * PI);
         }
+    }
+
+    //Convert radians to angle
+    for (int i; i < 3; i++){
+        angle[i] = angle[i] * RAD_TO_DEG;
     }
 }
 
@@ -118,16 +124,16 @@ void seesaw(){
     }
 }
 
-// Convert power values to PWM values and send them to the escs
+// Limit and convert power values to PWM values and send them to the escs
 void powertopwm(){
     for (int i = 0; i < 4; i++){
-        // Ensure motors don"t fall below the minimum power
-        if (motorpower[i] < minpower){
-            motorpower[i] = minpower;
+        // Ensure motors don"t fall below the minimum power except if the power is 0
+        if (motorpower[i] < minpower[i] && motorpower[i] != 0){
+            motorpower[i] = minpower[i];
         }
         // Ensure motor don"t exceed the maximum power
-        if (motorpower[i] > maxpower){
-            motorpower[i] =  maxpower;
+        if (motorpower[i] > maxpower[i]){
+            motorpower[i] =  maxpower[i];
         }
     }
     // Write the signals to the motors
@@ -144,27 +150,21 @@ void pidcontrol(){
         err[i] = angle[i] - setpoint[i];
     }
 
-    // Calculate change in time = dt
-    timer++;
-    pt = ct;
-    ct = timer;
-    et = (ct - pt)/rate;
-
     // Calculate change in error value in terms of change in time = de/dt
     for (int i = 0; i < 3; i++){
         preverr[i] = currerr[i];
         currerr[i] = err[i];
-        errderiv[i] = (currerr[i] - preverr[i])/et;
+        errderiv[i] = (currerr[i] - preverr[i])/rate;
 
     }
 
-    // Calculate PID - Proportion + Derivitive + Integral
+    // Calculate PID - Proportion + Integral + Derivitive
     for (int i = 0; i < 3; i++){
         correction[i] = (err[i] * gain[0]) + (errint[i] * gain[1]) + (errderiv[i] * gain[2]);
     }
 }
 
-// Main drone control code
+// Main drone code
 void drone(){
     mpudataprocessing();
     pidcontrol();
@@ -184,21 +184,34 @@ void print(double var[], int len){
 // Able to change setpoint through serial monitor
 void changesetpoint(int axis){
     if (Serial.available()){
-        setpoint[axis] = Serial.parseInt();
+        if (Serial.parseInt() > 0){
+            setpoint[axis] = Serial.parseInt();
+        }
     }
 }
 
-// Able to change motor power through serial monitor
-void changepower(int motor){
+// Able to change motor power through serial monitor 
+void changepower(){
     if (Serial.available()){
-        motorpower[motor] = Serial.parseInt();
+        float num = Serial.parseFloat();
+        if (num > 0){
+            for (int i; i < 4; i++){
+                if (i < num < (i + 1)){
+                    motorpower[i] = num - i;
+                }
+            }
+            if (4 < num < 5){
+               for (int i; i < 4; i++){
+                    motorpower[i] = num - 4;
+               }
+            }
+        }
     }
 }
 
 // Main code loop
 void loop(){
-    mpudataprocessing();
-    pidcontrol();
-    print(errderiv, 3);
+    changepower();
+    powertopwm();
     delay(1000/rate);
 }
