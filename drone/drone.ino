@@ -1,7 +1,7 @@
 // Adjustable variables
 
 double maxpower[4] = {0.2, 0.2, 0.2, 0.2}; // Maximum power Percentage - allows user to cap the power for safety
-double target = 0.2; // power you wish to achieve
+double target = 0.2; // Power you wish to achieve
 
 double setpoint[3] = {0, 0, 0}; // Destination in degrees
 
@@ -32,17 +32,9 @@ Servo motor2;
 Servo motor3;
 Servo motor4;
 
-bool startup = false; // Drone startup
-
-int pwm[4]; // PWM signal getting sent out to escs
-
 int mpu = 0x68; // MPU6050 address
 
 int pwmconst = 180; // Constant at which the motorpower is multiplied by
-
-double pt; // Previous Time - Time at which elapsed time was last calculated
-double ct = 0; // Current Time
-double et; // Elapsed Time - Time that has past since last defined
 
 double motorpower[4] = {minpower[0], minpower[1], minpower[2], minpower[3]}; // Motor power in percentage
 
@@ -57,6 +49,8 @@ double errint[3] = {0, 0, 0}; // Amount of error over-correction (Integral)
 double errderiv[3]; // Change in error (Derivitive)
 
 double correction[3]; // How much to correct by (PID final calculation)
+
+float num; // Recieved data from serial monitor
 
 //Initalise Arduino
 void setup(){
@@ -74,9 +68,6 @@ void setup(){
     motor2.write(0);
     motor3.write(0);
     motor4.write(0);
-    for (int i; i < 4; i++){
-        motorpower[i] = 0;
-    }
     delay(2500);
 }
 
@@ -117,11 +108,10 @@ void seesaw(){
     if (correction[0] >= setpoint[0]){
         motorpower[1] = target + correction[0];
         motorpower[0] = target - correction[0];
+        return;
     }
-    else {
-        motorpower[0] = target + (correction[0]*-1);
-        motorpower[1] = target - (correction[0]*-1);
-    }
+    motorpower[0] = target + (correction[0]*-1);
+    motorpower[1] = target - (correction[0]*-1);
 }
 
 // Limit and convert power values to PWM values and send them to the escs
@@ -182,36 +172,40 @@ void print(double var[], int len){
 }
 
 // Able to change setpoint through serial monitor
-void changesetpoint(int axis){
-    if (Serial.available()){
-        if (Serial.parseInt() > 0){
-            setpoint[axis] = Serial.parseInt();
+void changesetpoint(){
+    for (int i = 10; i < 13; i++){
+        if (i <= num < (i + 1)){
+            setpoint[i-10] = (num-i)*1000;
         }
     }
 }
 
 // Able to change motor power through serial monitor 
 void changepower(){
-    if (Serial.available()){
-        float num = Serial.parseFloat();
-        if (num > 0){
-            for (int i; i < 4; i++){
-                if (i < num < (i + 1)){
-                    motorpower[i] = num - i;
-                }
-            }
-            if (4 < num < 5){
-               for (int i; i < 4; i++){
-                    motorpower[i] = num - 4;
-               }
-            }
+    for (int i = 0; i < 4; i++){
+        if (i <= num < (i + 1)){
+            motorpower[i] = num - i;
+        }
+    }
+    if (4 <= num < 5){
+        for (int i = 0; i < 4; i++){
+                motorpower[i] = num - 4;
         }
     }
 }
 
+void readserial(){
+    if (!Serial.available()) return;
+    num = Serial.parseFloat();
+    if (num = 0) return;
+
+    changepower();
+    changesetpoint();
+}
+
 // Main code loop
 void loop(){
-    changepower();
-    powertopwm();
+    mpudataprocessing();
+    print(angle, 3);
     delay(1000/rate);
 }
