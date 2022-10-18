@@ -199,8 +199,12 @@ void readserial(){
     num = Serial.parseFloat();
     if (num = 0) return;
 
-    changepower();
-    changesetpoint();
+    if (0 <= num < 5){
+        changepower();
+    }
+    if (10 <= num < 13){
+        changesetpoint();
+    }
 }
 
 // Main code loop

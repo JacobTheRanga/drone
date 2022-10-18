@@ -18,7 +18,7 @@ def login():
         return redirect(url_for('home'))
     return render_template('/login.html', output ='Incorrect Password')
 
-@app.route('/', methods=['get', 'post'])
+@app.route('/')
 def home():
     if not session or session['user'] != 'admin':
         return redirect(url_for('login'))
@@ -31,6 +31,10 @@ def home():
         angle['z'] = rawAngle.split()[3]
         if request.method != 'POST':
             return render_template('/home.html', angle = angle)
+
+@app.route('/angle')
+def angle():
+    return render_template('home.html')
 
 if __name__ == '__main__':
     app.run(host='localhost', port=80)
